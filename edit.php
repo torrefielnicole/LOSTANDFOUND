@@ -8,10 +8,9 @@ if(isset($_POST['update'])){
     $name     = mysqli_real_escape_string($conn, $_POST['item_name']);
     $desc     = mysqli_real_escape_string($conn, $_POST['description']);
     $location = mysqli_real_escape_string($conn, $_POST['location_found']);
+    $status   = in_array($_POST['status'],   ['found','claimed'])              ? $_POST['status']   : 'found';
+    $category = in_array($_POST['category'], ['person','things','pet','money']) ? $_POST['category'] : 'things';
 
-    $status   = in_array($_POST['status'], ['found','claimed']) ? $_POST['status'] : 'found';
-
-    // Update image only if a new one was uploaded
     if(!empty($_FILES['image']['tmp_name'])){
         $raw        = file_get_contents($_FILES['image']['tmp_name']);
         $mime       = mime_content_type($_FILES['image']['tmp_name']);
@@ -20,12 +19,14 @@ if(isset($_POST['update'])){
 
         mysqli_query($conn, "UPDATE items
             SET item_name='$name', description='$desc',
-                location_found='$location', status='$status', image='$image_data'
+                location_found='$location', status='$status',
+                category='$category', image='$image_data'
             WHERE id=$id");
     } else {
         mysqli_query($conn, "UPDATE items
             SET item_name='$name', description='$desc',
-                location_found='$location', status='$status'
+                location_found='$location', status='$status',
+                category='$category'
             WHERE id=$id");
     }
 
@@ -60,6 +61,7 @@ if(isset($_POST['update'])){
             padding: 32px; position: relative;
             box-shadow: 0 24px 60px rgba(0,0,0,0.5);
             animation: popIn 0.22s cubic-bezier(0.34,1.56,0.64,1);
+            max-height: 90vh; overflow-y: auto;
         }
         @keyframes popIn {
             from { opacity:0; transform: scale(0.94) translateY(12px); }
@@ -74,7 +76,6 @@ if(isset($_POST['update'])){
             font-size: 16px; text-decoration: none;
         }
         .modal-close:hover { background: #2a1a1a; color: #f87171; }
-
         .modal-eyebrow {
             font-family: 'Space Mono', monospace; font-size: 10px;
             letter-spacing: 0.16em; color: #5a7a6a;
@@ -83,11 +84,9 @@ if(isset($_POST['update'])){
         .modal-title { font-size: 20px; font-weight: 600; color: #f0f0f0; margin-bottom: 4px; }
         .modal-subtitle { font-size: 12px; color: #4b5563; margin-bottom: 24px; }
         .modal-subtitle span { color: #22c55e; font-family: 'Space Mono', monospace; }
-
         .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
         .form-group { display: flex; flex-direction: column; gap: 6px; }
         .form-group.full { grid-column: 1 / -1; }
-
         label {
             font-size: 11px; font-weight: 600; color: #9ca3af;
             text-transform: uppercase; letter-spacing: 0.1em;
@@ -113,6 +112,39 @@ if(isset($_POST['update'])){
         }
         select:focus { border-color: #22c55e66; background-color: #1a2030; }
 
+        /* Category Pills */
+        .category-pills {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+        .cat-pill {
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            gap: 4px; padding: 12px 8px;
+            background: #1e2330; border: 0.5px solid #2a2f3d;
+            border-radius: 12px; cursor: pointer;
+            transition: all 0.15s; position: relative;
+        }
+        .cat-pill input[type=radio] {
+            position: absolute; opacity: 0; width: 0; height: 0;
+        }
+        .cat-pill .pill-icon { font-size: 22px; line-height: 1; }
+        .cat-pill .pill-label {
+            font-size: 11px; font-weight: 600; color: #9ca3af;
+            font-family: 'DM Sans', sans-serif; text-transform: none;
+            letter-spacing: 0;
+        }
+        .cat-pill:hover { border-color: #3a4050; background: #1a2030; }
+        .cat-pill.selected-person  { border-color: #60a5fa; background: #1a2030; }
+        .cat-pill.selected-things  { border-color: #22c55e; background: #1a2a1a; }
+        .cat-pill.selected-pet     { border-color: #fb923c; background: #1e1a12; }
+        .cat-pill.selected-money   { border-color: #facc15; background: #1e1c10; }
+        .cat-pill.selected-person .pill-label { color: #60a5fa; }
+        .cat-pill.selected-things .pill-label { color: #22c55e; }
+        .cat-pill.selected-pet    .pill-label { color: #fb923c; }
+        .cat-pill.selected-money  .pill-label { color: #facc15; }
+
         /* Current image */
         .current-img-wrap { position: relative; margin-bottom: 10px; }
         .current-img-wrap img {
@@ -130,8 +162,6 @@ if(isset($_POST['update'])){
             display: flex; align-items: center; justify-content: center;
             gap: 8px; color: #3a4050; font-size: 12px; margin-bottom: 10px;
         }
-
-        /* Upload zone */
         .upload-zone {
             border: 1px dashed #2a2f3d; border-radius: 12px;
             padding: 18px 16px; text-align: center;
@@ -147,8 +177,6 @@ if(isset($_POST['update'])){
         .upload-label { font-size: 12px; color: #6b7280; }
         .upload-label span { color: #22c55e; font-weight: 500; }
         .upload-hint { font-size: 11px; color: #3a4050; margin-top: 3px; }
-
-        /* New image preview */
         .preview-wrap { display: none; margin-top: 10px; position: relative; }
         .preview-wrap img {
             width: 100%; max-height: 160px; object-fit: cover;
@@ -163,8 +191,6 @@ if(isset($_POST['update'])){
             padding: 3px 8px; transition: background 0.15s;
         }
         .btn-remove-img:hover { background: rgba(180,30,30,0.7); color: #fff; }
-
-        /* Footer */
         .modal-footer { display: flex; gap: 10px; margin-top: 24px; }
         .btn-cancel {
             flex: 1; background: #1e2330; border: 0.5px solid #2a2f3d;
@@ -215,6 +241,30 @@ if(isset($_POST['update'])){
                 </div>
 
                 <div class="form-group full">
+                    <label>Category</label>
+                    <div class="category-pills" id="catPills">
+                        <?php
+                        $cats = [
+                            'things' => ['🎒', 'Things'],
+                            'person' => ['🧍', 'Person'],
+                            'pet'    => ['🐾', 'Pet'],
+                            'money'  => ['💰', 'Money'],
+                        ];
+                        $selectedCat = $data['category'] ?? 'things';
+                        foreach($cats as $val => [$icon, $label]):
+                            $checked  = $selectedCat === $val ? 'checked' : '';
+                            $selClass = $selectedCat === $val ? "selected-{$val}" : '';
+                        ?>
+                        <label class="cat-pill <?= $selClass ?>" id="pill-<?= $val ?>">
+                            <input type="radio" name="category" value="<?= $val ?>" <?= $checked ?> onchange="updatePills()">
+                            <span class="pill-icon"><?= $icon ?></span>
+                            <span class="pill-label"><?= $label ?></span>
+                        </label>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+
+                <div class="form-group full">
                     <label for="status">Status</label>
                     <select id="status" name="status">
                         <option value="found"   <?= (($data['status'] ?? 'found') === 'found'   ? 'selected' : '') ?>>📦 Found</option>
@@ -262,6 +312,13 @@ if(isset($_POST['update'])){
 </div>
 
 <script>
+function updatePills() {
+    const radios = document.querySelectorAll('input[name="category"]');
+    radios.forEach(r => {
+        const pill = document.getElementById('pill-' + r.value);
+        pill.className = 'cat-pill' + (r.checked ? ' selected-' + r.value : '');
+    });
+}
 function previewImage(input) {
     if(!input.files || !input.files[0]) return;
     const file = input.files[0];

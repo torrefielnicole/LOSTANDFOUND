@@ -5,8 +5,8 @@ if(isset($_POST['submit'])){
     $name     = mysqli_real_escape_string($conn, $_POST['item_name']);
     $desc     = mysqli_real_escape_string($conn, $_POST['description']);
     $location = mysqli_real_escape_string($conn, $_POST['location_found']);
-
-    $status = in_array($_POST['status'], ['found','claimed']) ? $_POST['status'] : 'found';
+    $status   = in_array($_POST['status'], ['found','claimed']) ? $_POST['status'] : 'found';
+    $category = in_array($_POST['category'], ['person','things','pet','money']) ? $_POST['category'] : 'things';
 
     $image_data = '';
     if(!empty($_FILES['image']['tmp_name'])){
@@ -18,8 +18,8 @@ if(isset($_POST['submit'])){
 
     $image_data = mysqli_real_escape_string($conn, $image_data);
 
-    mysqli_query($conn, "INSERT INTO items(item_name, description, location_found, image, status)
-        VALUES('$name','$desc','$location','$image_data','$status')");
+    mysqli_query($conn, "INSERT INTO items(item_name, description, location_found, image, status, category)
+        VALUES('$name','$desc','$location','$image_data','$status','$category')");
 
     header("Location: index.php");
     exit;
@@ -52,6 +52,7 @@ if(isset($_POST['submit'])){
             padding: 32px; position: relative;
             box-shadow: 0 24px 60px rgba(0,0,0,0.5);
             animation: popIn 0.22s cubic-bezier(0.34,1.56,0.64,1);
+            max-height: 90vh; overflow-y: auto;
         }
         @keyframes popIn {
             from { opacity:0; transform: scale(0.94) translateY(12px); }
@@ -100,6 +101,40 @@ if(isset($_POST['submit'])){
             background-repeat: no-repeat; background-position: right 14px center;
         }
         select:focus { border-color: #22c55e66; background-color: #1a2030; }
+
+        /* Category Pills */
+        .category-pills {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+        .cat-pill {
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            gap: 4px; padding: 12px 8px;
+            background: #1e2330; border: 0.5px solid #2a2f3d;
+            border-radius: 12px; cursor: pointer;
+            transition: all 0.15s; position: relative;
+        }
+        .cat-pill input[type=radio] {
+            position: absolute; opacity: 0; width: 0; height: 0;
+        }
+        .cat-pill .pill-icon { font-size: 22px; line-height: 1; }
+        .cat-pill .pill-label {
+            font-size: 11px; font-weight: 600; color: #9ca3af;
+            font-family: 'DM Sans', sans-serif; text-transform: none;
+            letter-spacing: 0;
+        }
+        .cat-pill:hover { border-color: #3a4050; background: #1a2030; }
+        .cat-pill.selected-person  { border-color: #60a5fa; background: #1a2030; }
+        .cat-pill.selected-things  { border-color: #22c55e; background: #1a2a1a; }
+        .cat-pill.selected-pet     { border-color: #fb923c; background: #1e1a12; }
+        .cat-pill.selected-money   { border-color: #facc15; background: #1e1c10; }
+        .cat-pill.selected-person .pill-label { color: #60a5fa; }
+        .cat-pill.selected-things .pill-label { color: #22c55e; }
+        .cat-pill.selected-pet    .pill-label { color: #fb923c; }
+        .cat-pill.selected-money  .pill-label { color: #facc15; }
+
         .upload-zone {
             border: 1px dashed #2a2f3d; border-radius: 12px;
             padding: 20px 16px; text-align: center;
@@ -183,6 +218,30 @@ if(isset($_POST['submit'])){
                 </div>
 
                 <div class="form-group full">
+                    <label>Category</label>
+                    <div class="category-pills" id="catPills">
+                        <?php
+                        $cats = [
+                            'things' => ['🎒', 'Things'],
+                            'person' => ['🧍', 'Person'],
+                            'pet'    => ['🐾', 'Pet'],
+                            'money'  => ['💰', 'Money'],
+                        ];
+                        $selectedCat = $_POST['category'] ?? 'things';
+                        foreach($cats as $val => [$icon, $label]):
+                            $checked = $selectedCat === $val ? 'checked' : '';
+                            $selClass = $selectedCat === $val ? "selected-{$val}" : '';
+                        ?>
+                        <label class="cat-pill <?= $selClass ?>" id="pill-<?= $val ?>">
+                            <input type="radio" name="category" value="<?= $val ?>" <?= $checked ?> onchange="updatePills()">
+                            <span class="pill-icon"><?= $icon ?></span>
+                            <span class="pill-label"><?= $label ?></span>
+                        </label>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+
+                <div class="form-group full">
                     <label for="status">Status</label>
                     <select id="status" name="status">
                         <option value="found"   <?= (($_POST['status'] ?? '') === 'found'   ? 'selected' : '') ?>>📦 Found</option>
@@ -217,6 +276,13 @@ if(isset($_POST['submit'])){
 </div>
 
 <script>
+function updatePills() {
+    const radios = document.querySelectorAll('input[name="category"]');
+    radios.forEach(r => {
+        const pill = document.getElementById('pill-' + r.value);
+        pill.className = 'cat-pill' + (r.checked ? ' selected-' + r.value : '');
+    });
+}
 function previewImage(input) {
     if(!input.files || !input.files[0]) return;
     const file = input.files[0];
